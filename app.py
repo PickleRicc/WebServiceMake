@@ -88,36 +88,40 @@ def home():
 
 @app.route('/test-webhook', methods=['GET'])
 def test_webhook():
-    """Test the webhook connection."""
+    """Test the webhook connection immediately."""
     try:
-        # Send a test message
+        # Send a test message immediately
         test_message = {
-            "message": "Test message from webhook scheduler",
-            "timestamp": datetime.now().isoformat(),
-            "type": "test"
+            "message": "Test message - checking webhook connection",
+            "timestamp": datetime.now().isoformat()
         }
         
+        logger.info(f"Sending test message to webhook: {WEBHOOK_URL}")
+        logger.info(f"Test message content: {test_message}")
+        
         response = requests.post(WEBHOOK_URL, json=test_message)
+        
+        logger.info(f"Webhook response status: {response.status_code}")
+        logger.info(f"Webhook response text: {response.text}")
         
         if response.status_code == 200:
             return jsonify({
                 "status": "success",
-                "message": "Test message sent successfully",
-                "webhook_response": response.text
-            }), 200
+                "message": "Webhook test successful",
+                "response": response.text
+            })
         else:
             return jsonify({
                 "status": "error",
-                "message": f"Webhook returned status code: {response.status_code}",
-                "webhook_response": response.text
+                "message": f"Webhook test failed with status {response.status_code}",
+                "response": response.text
             }), 400
-            
+    
     except Exception as e:
-        logger.exception("Error in test_webhook")
+        logger.exception("Error testing webhook")
         return jsonify({
             "status": "error",
-            "message": "Failed to send test message",
-            "details": str(e)
+            "message": str(e)
         }), 500
 
 def validate_iso_datetime(dt_string: str) -> Optional[datetime]:
