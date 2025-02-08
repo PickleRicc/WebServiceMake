@@ -8,10 +8,11 @@ import os
 from typing import Optional
 import uuid
 from collections import defaultdict
+import json
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler()
@@ -29,6 +30,37 @@ DEFAULT_DELAY_MINUTES = 5
 # Store for scheduled tasks
 scheduled_tasks = {}
 task_history = defaultdict(list)
+
+def parse_request_data(request):
+    """Parse request data handling various formats."""
+    try:
+        # First, try to get the raw data as text
+        raw_data = request.get_data(as_text=True)
+        logger.info(f"Raw request data: {raw_data}")
+
+        # If it starts with "```json", it's a code block format
+        if raw_data.startswith('```json'):
+            # Strip the ```json and ``` markers and any whitespace
+            json_str = raw_data.replace('```json', '').replace('```', '').strip()
+            logger.info(f"Extracted JSON from code block: {json_str}")
+            return json.loads(json_str)
+
+        # Try parsing as regular JSON
+        try:
+            return json.loads(raw_data)
+        except json.JSONDecodeError:
+            pass
+
+        # If we have JSON in request.json, use that
+        if request.is_json:
+            return request.json
+
+        # If we get here, we couldn't parse the data
+        raise ValueError("Could not parse request data as JSON")
+
+    except Exception as e:
+        logger.error(f"Error parsing request data: {e}")
+        raise
 
 @app.route('/')
 def home():
@@ -92,23 +124,22 @@ def schedule_message():
     try:
         logger.info("Received schedule request")
         logger.info(f"Request headers: {dict(request.headers)}")
-        logger.info(f"Request data: {request.get_data(as_text=True)}")
         
         try:
-            data = request.json
+            data = parse_request_data(request)
         except Exception as e:
-            logger.error(f"Failed to parse JSON: {e}")
+            logger.error(f"Failed to parse request data: {e}")
             return jsonify({
                 "status": "error",
-                "message": "Invalid JSON data",
+                "message": "Invalid request data",
                 "details": str(e)
             }), 400
 
         if not data:
-            logger.error("No JSON data received")
+            logger.error("No data received")
             return jsonify({
                 "status": "error",
-                "message": "No JSON data received"
+                "message": "No data received"
             }), 400
 
         logger.info(f"Parsed data: {data}")
@@ -132,7 +163,7 @@ def schedule_message():
         if not appointment_time:
             return jsonify({
                 "status": "error",
-                "message": "Invalid datetime format. Please use ISO format (YYYY-MM-DDTHH:MM:SS+HH:MM)",
+                "message": "Invalid datetime format. Please use ISO format (YYYY-MM-DDTHH:MM:SS+HH:MM or YYYY-MM-DDTHH:MM:SSZ)",
                 "received_time": appointment_time_iso
             }), 400
 
