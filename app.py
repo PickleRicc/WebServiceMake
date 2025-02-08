@@ -38,25 +38,38 @@ def parse_request_data(request):
         raw_data = request.get_data(as_text=True)
         logger.info(f"Raw request data: {raw_data}")
 
+        # Handle the case where the string contains literal \n characters
+        if '\\n' in raw_data:
+            # Remove the outer quotes if they exist
+            if raw_data.startswith('"') and raw_data.endswith('"'):
+                raw_data = raw_data[1:-1]
+            
+            # Replace literal \n with actual newlines
+            raw_data = raw_data.replace('\\n', '\n')
+            logger.info(f"After newline replacement: {raw_data}")
+
         # If it starts with "```json", it's a code block format
         if raw_data.startswith('```json'):
             # Strip the ```json and ``` markers and any whitespace
             json_str = raw_data.replace('```json', '').replace('```', '').strip()
             logger.info(f"Extracted JSON from code block: {json_str}")
-            return json.loads(json_str)
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse code block JSON: {e}")
 
         # Try parsing as regular JSON
         try:
             return json.loads(raw_data)
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse raw JSON: {e}")
 
         # If we have JSON in request.json, use that
         if request.is_json:
             return request.json
 
         # If we get here, we couldn't parse the data
-        raise ValueError("Could not parse request data as JSON")
+        raise ValueError(f"Could not parse request data as JSON. Raw data: {raw_data}")
 
     except Exception as e:
         logger.error(f"Error parsing request data: {e}")
