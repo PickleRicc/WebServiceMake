@@ -43,9 +43,18 @@ def home():
 def validate_iso_datetime(dt_string: str) -> Optional[datetime]:
     """Validate and parse ISO format datetime string."""
     try:
-        return datetime.fromisoformat(dt_string)
+        # Try parsing the datetime string
+        if dt_string.endswith('Z'):
+            # Convert 'Z' timestamp to datetime
+            # Remove the 'Z' and assume UTC
+            dt_string = dt_string[:-1] + '+00:00'
+        
+        dt = datetime.fromisoformat(dt_string)
+        logger.info(f"Successfully parsed datetime: {dt}")
+        return dt
     except ValueError as e:
         logger.error(f"Invalid datetime format: {e}")
+        logger.error(f"Received datetime string: {dt_string}")
         return None
 
 def send_request(task_id: str, formatted_message: str):
@@ -82,7 +91,19 @@ def schedule_message():
     """Schedule a message to be sent later."""
     try:
         logger.info("Received schedule request")
-        data = request.json
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Request data: {request.get_data(as_text=True)}")
+        
+        try:
+            data = request.json
+        except Exception as e:
+            logger.error(f"Failed to parse JSON: {e}")
+            return jsonify({
+                "status": "error",
+                "message": "Invalid JSON data",
+                "details": str(e)
+            }), 400
+
         if not data:
             logger.error("No JSON data received")
             return jsonify({
@@ -90,24 +111,29 @@ def schedule_message():
                 "message": "No JSON data received"
             }), 400
 
-        logger.debug(f"Received data: {data}")
+        logger.info(f"Parsed data: {data}")
         
         if 'appointment_time' not in data or 'formatted_message' not in data:
-            logger.error("Missing required fields")
+            logger.error(f"Missing required fields. Received fields: {list(data.keys())}")
             return jsonify({
                 "status": "error",
-                "message": "Missing required fields: appointment_time and formatted_message"
+                "message": "Missing required fields: appointment_time and formatted_message",
+                "received_fields": list(data.keys())
             }), 400
 
         appointment_time_iso = data['appointment_time']
         formatted_message = data['formatted_message']
+        
+        logger.info(f"Received appointment_time: {appointment_time_iso}")
+        logger.info(f"Received message: {formatted_message}")
         
         appointment_time = validate_iso_datetime(appointment_time_iso)
         
         if not appointment_time:
             return jsonify({
                 "status": "error",
-                "message": "Invalid datetime format. Please use ISO format (YYYY-MM-DDTHH:MM:SS+HH:MM)"
+                "message": "Invalid datetime format. Please use ISO format (YYYY-MM-DDTHH:MM:SS+HH:MM)",
+                "received_time": appointment_time_iso
             }), 400
 
         # Calculate target time
@@ -141,7 +167,7 @@ def schedule_message():
             'scheduled_time': target_time.isoformat()
         })
         
-        logger.info(f"Scheduled task {task_id} for {target_time}")
+        logger.info(f"Successfully scheduled task {task_id} for {target_time}")
         
         return jsonify({
             "status": "success",
@@ -158,7 +184,8 @@ def schedule_message():
         logger.exception("Error in schedule_message")
         return jsonify({
             "status": "error",
-            "message": f"Internal server error: {str(e)}"
+            "message": "Internal server error",
+            "details": str(e)
         }), 500
 
 @app.route('/status', methods=['GET'])
