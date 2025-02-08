@@ -44,12 +44,10 @@ def send_delayed_message(task_id: str, message: str):
         webhook_data = {
             "type": "delayed_message",
             "task_id": task_id,
-            "message": message,
-            "metadata": {
-                "sent_at": datetime.now().isoformat(),
-                "delay_seconds": DELAY_SECONDS,
-                "status": "delivered"
-            }
+            "content": message,
+            "timestamp": datetime.now().isoformat(),
+            "status": "delivered",
+            "delay_seconds": DELAY_SECONDS
         }
         
         print(f"Sending to webhook: {webhook_data}")  # Console logging
@@ -84,8 +82,10 @@ def test_webhook():
     try:
         # Send a test message immediately
         test_message = {
-            "message": "Test message - checking webhook connection",
-            "timestamp": datetime.now().isoformat()
+            "type": "test_message",
+            "content": "Test message - checking webhook connection",
+            "timestamp": datetime.now().isoformat(),
+            "status": "test"
         }
         
         logger.info(f"Sending test message to webhook: {WEBHOOK_URL}")
