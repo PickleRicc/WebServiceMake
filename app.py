@@ -14,7 +14,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('webhook_scheduler.log'),
         logging.StreamHandler()
     ]
 )
@@ -30,6 +29,16 @@ DEFAULT_DELAY_MINUTES = 5
 # Store for scheduled tasks
 scheduled_tasks = {}
 task_history = defaultdict(list)
+
+@app.route('/')
+def home():
+    """Root endpoint to verify server is running."""
+    return jsonify({
+        "status": "running",
+        "message": "Webhook scheduler is running",
+        "time": datetime.now().isoformat(),
+        "env": os.environ.get('FLASK_ENV', 'production')
+    })
 
 def validate_iso_datetime(dt_string: str) -> Optional[datetime]:
     """Validate and parse ISO format datetime string."""
@@ -70,9 +79,21 @@ def send_request(task_id: str, formatted_message: str):
 
 @app.route('/schedule', methods=['POST'])
 def schedule_message():
+    """Schedule a message to be sent later."""
     try:
+        logger.info("Received schedule request")
         data = request.json
-        if not data or 'appointment_time' not in data or 'formatted_message' not in data:
+        if not data:
+            logger.error("No JSON data received")
+            return jsonify({
+                "status": "error",
+                "message": "No JSON data received"
+            }), 400
+
+        logger.debug(f"Received data: {data}")
+        
+        if 'appointment_time' not in data or 'formatted_message' not in data:
+            logger.error("Missing required fields")
             return jsonify({
                 "status": "error",
                 "message": "Missing required fields: appointment_time and formatted_message"
@@ -120,7 +141,7 @@ def schedule_message():
             'scheduled_time': target_time.isoformat()
         })
         
-        logger.info(f"Scheduled task {task_id} for {target_time} with message: {formatted_message[:50]}...")
+        logger.info(f"Scheduled task {task_id} for {target_time}")
         
         return jsonify({
             "status": "success",
@@ -129,16 +150,15 @@ def schedule_message():
             "details": {
                 "original_time": appointment_time_iso,
                 "scheduled_time": target_time.isoformat(),
-                "formatted_message": formatted_message,
-                "webhook_configured": bool(WEBHOOK_URL != 'https://hook.us2.make.com/u3ceaj53fe1o6lp0wy4piat5gl0im6oa')
+                "formatted_message": formatted_message
             }
         }), 200
 
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.exception("Error in schedule_message")
         return jsonify({
             "status": "error",
-            "message": "Internal server error"
+            "message": f"Internal server error: {str(e)}"
         }), 500
 
 @app.route('/status', methods=['GET'])
@@ -174,34 +194,6 @@ def get_status():
             for task_id, task in scheduled_tasks.items()
         }
     })
-
-@app.route('/test-webhook', methods=['POST'])
-def test_webhook():
-    """Test endpoint to immediately send a message to Make.com"""
-    try:
-        data = request.json
-        message = data.get('formatted_message', 'Test message from webhook scheduler')
-        
-        response = requests.post(
-            WEBHOOK_URL,
-            json={
-                "formatted_message": message
-            },
-            timeout=10
-        )
-        response.raise_for_status()
-        
-        return jsonify({
-            "status": "success",
-            "message": "Test message sent successfully",
-            "response_code": response.status_code
-        }), 200
-        
-    except requests.exceptions.RequestException as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Failed to send test message: {str(e)}"
-        }), 500
 
 def run_scheduler():
     """Run the scheduler in a separate thread."""
