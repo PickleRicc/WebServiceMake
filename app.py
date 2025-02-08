@@ -23,9 +23,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Configuration
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://hook.us2.make.com/u3ceaj53fe1o6lp0wy4piat5gl0im6oa')
-DEFAULT_DELAY_HOURS = 1
-DEFAULT_DELAY_MINUTES = 5
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://hook.us2.make.com/u3ceaj53fe1o6lp0wy4piat5gl0im6oa123')
+DEFAULT_DELAY_HOURS = 0
+DEFAULT_DELAY_MINUTES = 0
+DEFAULT_DELAY_SECONDS = 30
 
 # Store for scheduled tasks
 scheduled_tasks = {}
@@ -217,7 +218,8 @@ def schedule_message():
         # Calculate target time
         target_time = appointment_time + timedelta(
             hours=DEFAULT_DELAY_HOURS,
-            minutes=DEFAULT_DELAY_MINUTES
+            minutes=DEFAULT_DELAY_MINUTES,
+            seconds=DEFAULT_DELAY_SECONDS
         )
 
         # Generate unique task ID
