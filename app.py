@@ -85,6 +85,40 @@ def home():
         "env": os.environ.get('FLASK_ENV', 'production')
     })
 
+@app.route('/test-webhook', methods=['GET'])
+def test_webhook():
+    """Test the webhook connection."""
+    try:
+        # Send a test message
+        test_message = {
+            "message": "Test message from webhook scheduler",
+            "timestamp": datetime.now().isoformat(),
+            "type": "test"
+        }
+        
+        response = requests.post(WEBHOOK_URL, json=test_message)
+        
+        if response.status_code == 200:
+            return jsonify({
+                "status": "success",
+                "message": "Test message sent successfully",
+                "webhook_response": response.text
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Webhook returned status code: {response.status_code}",
+                "webhook_response": response.text
+            }), 400
+            
+    except Exception as e:
+        logger.exception("Error in test_webhook")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to send test message",
+            "details": str(e)
+        }), 500
+
 def validate_iso_datetime(dt_string: str) -> Optional[datetime]:
     """Validate and parse ISO format datetime string."""
     try:
