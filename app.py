@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Configuration
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://hook.us2.make.com/u3ceaj53fe1o6lp0wy4piat5gl0im6oa')
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://u3ceaj53fe1o6lp0wy4piat5gl0im6oa@hook.us2.make.com')
 DELAY_SECONDS = 30
 
 # Store for scheduled tasks
