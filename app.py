@@ -33,16 +33,38 @@ task_history = defaultdict(list)
 
 def send_delayed_message(task_id: str, message: str):
     """Send a message after a delay."""
+    print(f"Starting delay for task {task_id}")  # Console logging
+    logger.info(f"Starting delay for task {task_id}")
+    logger.info(f"Will send message in {DELAY_SECONDS} seconds")
+    logger.info(f"Using webhook URL: {WEBHOOK_URL}")
+    
     time.sleep(DELAY_SECONDS)
+    
     try:
-        response = requests.post(WEBHOOK_URL, json={
+        webhook_data = {
+            "type": "delayed_message",
             "task_id": task_id,
             "message": message,
-            "sent_at": datetime.now().isoformat()
-        })
-        logger.info(f"Message sent for task {task_id}. Response: {response.status_code}")
+            "metadata": {
+                "sent_at": datetime.now().isoformat(),
+                "delay_seconds": DELAY_SECONDS,
+                "status": "delivered"
+            }
+        }
+        
+        print(f"Sending to webhook: {webhook_data}")  # Console logging
+        logger.info(f"Attempting to send to webhook URL: {WEBHOOK_URL}")
+        logger.info(f"Webhook data: {webhook_data}")
+        
+        response = requests.post(WEBHOOK_URL, json=webhook_data)
+        
+        print(f"Webhook response: Status={response.status_code}, Body={response.text}")  # Console logging
+        logger.info(f"Webhook response status: {response.status_code}")
+        logger.info(f"Webhook response body: {response.text}")
+        
         return response.status_code == 200
     except Exception as e:
+        print(f"Error sending to webhook: {e}")  # Console logging
         logger.error(f"Error sending message for task {task_id}: {e}")
         return False
 
