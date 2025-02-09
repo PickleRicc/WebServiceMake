@@ -42,18 +42,22 @@ def send_delayed_message(task_id: str, message: str):
     
     try:
         webhook_data = {
-            "date": datetime.now().isoformat(),
-            "subject": f"Delayed Message {task_id}",
-            "text": message,
-            "from": "delayed@webservice.com",
-            "to": "make@integration.com",
-            "html": f"<p>{message}</p>"
+            "message": message,
+            "task_id": task_id,
+            "sent_at": datetime.now().isoformat(),
+            "type": "delayed_message"
         }
         
         print(f"Sending to webhook: {webhook_data}")  # Console logging
         logger.info(f"Raw webhook data: {json.dumps(webhook_data, indent=2)}")
         
-        response = requests.post(WEBHOOK_URL, json=webhook_data)
+        # Add custom headers to help Make.com parse the JSON
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.post(WEBHOOK_URL, json=webhook_data, headers=headers)
         
         print(f"Webhook response: Status={response.status_code}, Body={response.text}")  # Console logging
         logger.info(f"Webhook response status: {response.status_code}")
@@ -82,18 +86,20 @@ def test_webhook():
     try:
         # Send a test message immediately
         test_message = {
-            "date": datetime.now().isoformat(),
-            "subject": "Test Message",
-            "text": "This is a test message from the webhook",
-            "from": "test@webservice.com",
-            "to": "make@integration.com",
-            "html": "<p>This is a test message from the webhook</p>"
+            "message": "This is a test message from the webhook",
+            "timestamp": datetime.now().isoformat()
         }
         
         logger.info(f"Sending test message to webhook: {WEBHOOK_URL}")
         logger.info(f"Raw test message content: {json.dumps(test_message, indent=2)}")
         
-        response = requests.post(WEBHOOK_URL, json=test_message)
+        # Add custom headers to help Make.com parse the JSON
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.post(WEBHOOK_URL, json=test_message, headers=headers)
         
         logger.info(f"Webhook response status: {response.status_code}")
         logger.info(f"Webhook response text: {response.text}")
