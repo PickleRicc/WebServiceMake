@@ -42,27 +42,23 @@ def send_delayed_message(task_id: str, message: str):
     
     try:
         webhook_data = {
-            "text": message,
-            "subject": f"Delayed Message (Task: {task_id})",
             "date": datetime.now().isoformat(),
+            "subject": f"Delayed Message {task_id}",
+            "text": message,
             "from": "delayed@webservice.com",
             "to": "make@integration.com",
-            "metadata": {
-                "task_id": task_id,
-                "delay_seconds": DELAY_SECONDS,
-                "type": "delayed_message"
-            }
+            "html": f"<p>{message}</p>"
         }
         
         print(f"Sending to webhook: {webhook_data}")  # Console logging
-        logger.info(f"Attempting to send to webhook URL: {WEBHOOK_URL}")
-        logger.info(f"Webhook data: {webhook_data}")
+        logger.info(f"Raw webhook data: {json.dumps(webhook_data, indent=2)}")
         
         response = requests.post(WEBHOOK_URL, json=webhook_data)
         
         print(f"Webhook response: Status={response.status_code}, Body={response.text}")  # Console logging
         logger.info(f"Webhook response status: {response.status_code}")
         logger.info(f"Webhook response body: {response.text}")
+        logger.info(f"Response headers: {dict(response.headers)}")
         
         return response.status_code == 200
     except Exception as e:
@@ -86,32 +82,36 @@ def test_webhook():
     try:
         # Send a test message immediately
         test_message = {
-            "text": "Test message - checking webhook connection",
-            "subject": "Test Webhook Message",
             "date": datetime.now().isoformat(),
+            "subject": "Test Message",
+            "text": "This is a test message from the webhook",
             "from": "test@webservice.com",
-            "to": "make@integration.com"
+            "to": "make@integration.com",
+            "html": "<p>This is a test message from the webhook</p>"
         }
         
         logger.info(f"Sending test message to webhook: {WEBHOOK_URL}")
-        logger.info(f"Test message content: {test_message}")
+        logger.info(f"Raw test message content: {json.dumps(test_message, indent=2)}")
         
         response = requests.post(WEBHOOK_URL, json=test_message)
         
         logger.info(f"Webhook response status: {response.status_code}")
         logger.info(f"Webhook response text: {response.text}")
+        logger.info(f"Response headers: {dict(response.headers)}")
         
         if response.status_code == 200:
             return jsonify({
                 "status": "success",
                 "message": "Webhook test successful",
-                "response": response.text
+                "response": response.text,
+                "sent_data": test_message
             })
         else:
             return jsonify({
                 "status": "error",
                 "message": f"Webhook test failed with status {response.status_code}",
-                "response": response.text
+                "response": response.text,
+                "sent_data": test_message
             }), 400
     
     except Exception as e:
